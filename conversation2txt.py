@@ -2,26 +2,21 @@ import os
 import re
 import magic
 import torch
-from app import get_executable_directory, load_args
+from app import load_args
 from funasr import AutoModel
-from funasr.utils.postprocess_utils import rich_transcription_postprocess
-
-# 初始化参数
-ROOT_DIR = get_executable_directory()
-Model_SenseVoice= os.path.join(ROOT_DIR, "models", "iic", "SenseVoiceSmall")
-Model_fsmn_vad = os.path.join(ROOT_DIR, "models", "iic", "speech_fsmn_vad_zh-cn-16k-common-pytorch")
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # 加载本地模型，用于说话人分离
 def load_sensevoice_model() -> AutoModel:
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     model = AutoModel(
-        model=Model_SenseVoice,
+        model="iic/SenseVoiceSmall",
         trust_remote_code=True,
         remote_code="./model.py",  
-        vad_model=Model_fsmn_vad,
+        vad_model="fsmn-vad",
         vad_kwargs={"max_single_segment_time": 30000},
         device=DEVICE,
+        dtype="fp16" if DEVICE == "cuda" else "fp32",  # GPU使用半精度加速
     )
     return model
 

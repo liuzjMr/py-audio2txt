@@ -3,3 +3,4 @@ funasr==1.2.6
 modelscope==1.24.1
 torch==2.6.0
 torchaudio==2.6.0
+transformers==4.50.3
