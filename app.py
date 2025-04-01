@@ -74,10 +74,10 @@ def load_args() -> tuple[dict[str, str], list[str]]:
             key_value = arg[2:].split('=', 1)
             key = key_value[0]
             value = key_value[1].strip() if len(key_value) > 1 else True
-            params[key] = value
+            options[key.lower()] = value
         elif arg.startswith('-') and len(arg) > 1:
             # 处理短参数（如 -d=2、-d2、-d）
-            param_name = arg[1]  # 参数名为第一个字符
+            key = arg[1]  # 参数名为第一个字符
             value_part = arg[2:]
             if '=' in value_part:
                 # 分割等号后的部分（如 -d=2 → 值取 "2"）
@@ -85,7 +85,7 @@ def load_args() -> tuple[dict[str, str], list[str]]:
                 value = value.strip()
             else:
                 value = value_part.strip() if value_part else True  # 无值则设为 True
-            params[param_name] = value
+            options[key.lower()] = value
         else:
             # 如果参数没有前缀，则将其视为位置参数
             params.append(arg)

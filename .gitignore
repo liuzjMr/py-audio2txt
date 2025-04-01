@@ -10,6 +10,7 @@ __pycache__/
 .Python
 data/
 build/
+models/
 develop-eggs/
 dist/
 downloads/
@@ -173,17 +174,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-models/openai/whisper-large-v3/added_tokens.json
-models/openai/whisper-large-v3/config.json
-models/openai/whisper-large-v3/generation_config.json
-models/openai/whisper-large-v3/merges.txt
-models/openai/whisper-large-v3/model.safetensors
-models/openai/whisper-large-v3/normalizer.json
-models/openai/whisper-large-v3/preprocessor_config.json
-models/openai/whisper-large-v3/README.md
-models/openai/whisper-large-v3/special_tokens_map.json
-models/openai/whisper-large-v3/tokenizer_config.json
-models/openai/whisper-large-v3/tokenizer.json
-models/openai/whisper-large-v3/vocab.json
-models/pyannote/speaker-diarization-3.1/pyannote_model_segmentation-3.0.bin
-models/pyannote/speaker-diarization-3.1/pyannote_model_wespeaker-voxceleb-resnet34-LM.bin
+

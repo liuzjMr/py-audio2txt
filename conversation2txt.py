@@ -1,130 +1,45 @@
-from bisect import bisect_right
 import os
-import tempfile
-from typing import cast
+import re
 import magic
 import torch
-from pathlib import Path
-from pydub import AudioSegment
-from pyannote.audio import Pipeline as DiarizationPipeline
-from transformers import pipeline, AutoModelForSpeechSeq2Seq, AutoProcessor
-from transformers.models.whisper.modeling_whisper import WhisperForConditionalGeneration
 from app import get_executable_directory, load_args
-
+from funasr import AutoModel
+from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
 # 初始化参数
 ROOT_DIR = get_executable_directory()
-Model_Config_Pyannote = os.path.join(ROOT_DIR, "models", "pyannote", "speaker-diarization-3.1", "pyannote_diarization_config.yaml")
-Model_Path_Whisper = os.path.join(ROOT_DIR, "models", "openai", "whisper-large-v3")
+Model_SenseVoice= os.path.join(ROOT_DIR, "models", "iic", "SenseVoiceSmall")
+Model_fsmn_vad = os.path.join(ROOT_DIR, "models", "iic", "speech_fsmn_vad_zh-cn-16k-common-pytorch")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-TORCH_TYPE = torch.float16 if DEVICE == "cuda" else torch.float32
+
 
 # 加载本地模型，用于说话人分离
-def load_local_pyannote_pipeline() -> DiarizationPipeline:
-    path_to_config = Path(Model_Config_Pyannote)
-    pipeline = DiarizationPipeline.from_pretrained(path_to_config)
-    return pipeline
-
-def load_local_whisper_pipeline() -> pipeline:
-    processor = AutoProcessor.from_pretrained(Model_Path_Whisper)
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        Model_Path_Whisper,
-        torch_dtype=TORCH_TYPE,
-        low_cpu_mem_usage=True,
-        use_safetensors=True
-    )
-    model = cast(WhisperForConditionalGeneration, model)
-    model.to(DEVICE)
-    model.generation_config.language = "zh"  # 设置语言为中文
-    model.generation_config.forced_decoder_ids = None  # 解除强制语言限制
-    model.eval()
-    
-    asr_pipe = pipeline(
-        "automatic-speech-recognition",
-        model=model,
-        tokenizer=processor.tokenizer,
-        feature_extractor=processor.feature_extractor,
-        torch_dtype=TORCH_TYPE,
+def load_sensevoice_model() -> AutoModel:
+    model = AutoModel(
+        model=Model_SenseVoice,
+        trust_remote_code=True,
+        remote_code="./model.py",  
+        vad_model=Model_fsmn_vad,
+        vad_kwargs={"max_single_segment_time": 30000},
         device=DEVICE,
-    )    
-    return asr_pipe
-
-# 1：音频预处理（转换为16kHz单声道wav）
-def preprocess_audio(input_path: str) -> str:
-    """
-    音频预处理
-    :param input_path: 输入音频文件路径
-    :return: 处理后的音频文件路径
-    """
-    temp_id = os.path.splitext(os.path.basename(input_path))[0]
-    temp_dir = tempfile.gettempdir()
-    wav_path = os.path.join(temp_dir, f"temp_{temp_id}.wav")
-    audio = AudioSegment.from_file(input_path)
-    audio = audio.set_frame_rate(16000).set_channels(1)
-    audio.export(wav_path, format="wav")
-    return wav_path
-
-
-# 2：说话人分离（Pyannote), 返回说话人分离的片段(start, end, speaker)
-def speaker_diarization(diarization_pipe: DiarizationPipeline, wav_path: str) -> list[tuple[float, float, str]]:    
-    """
-    说话人分离
-    :param diarization_pipe: 说话人分离模型
-    :param wav_path: 输入音频文件路径
-    :return: 说话人分离的片段
-    """
-    # 说话人分离
-    diarization = diarization_pipe(wav_path)
-    results = sorted(
-        [(float(seg.start), float(seg.end), str(speaker)) 
-         for seg, _, speaker in diarization.itertracks(yield_label=True)],
-        key=lambda x: x[0]
     )
-    return results
+    return model
 
-
-# 3：语音识别（SenseVoiceSmall）
-def speech_recognition(asr_pipe: pipeline, wav_path: str, speaker_segments: list[tuple[float, float, str]]) -> list[dict]:
-    """
-    语音识别
-    :param asr_pipe: 语音识别模型
-    :param wav_path: 输入音频文件路径
-    :param speaker_segments: 说话人分离的片段
-    :return: 识别结果
-    """
-    # 语音识别
-    result = asr_pipe(
-        wav_path,
-        return_timestamps=True,  # 显式启用时间戳
-        generate_kwargs={"task": "transcribe", "language": "zh"},
-        chunk_length_s=30,  # 每个片段的长度
-        stride_length_s=2,  # 重叠长度
+# 语音识别（SenseVoiceSmall）
+def speech_recognition(model: AutoModel, audio_path: str) -> list[str]:
+    res = model.generate(
+        input=audio_path,
+        cache={},
+        language="auto",  # "zh", "en", "yue", "ja", "ko", "nospeech"
+        use_itn=True,
+        batch_size_s=60,
+        merge_vad=False,  #
+        merge_length_s=15,
     )
-
-    transcription = []
-    if "chunks" in result:
-        transcription = result["chunks"]
-
-    # 处理对齐逻辑
-    aligned_result = []
-    for item in transcription:
-        text = item["text"].strip()
-        if not text:
-            continue
-        start = item["timestamp"][0]
-        end = item["timestamp"][1]
-        
-        idx = bisect_right(speaker_segments, (start, float('inf'), '')) - 1
-        speaker = speaker_segments[idx][2] if idx >=0 and start <= speaker_segments[idx][1] else "Unknown"
-        
-        aligned_result.append({
-            "speaker": speaker,
-            "text": text,
-            "start": start,
-            "end": end
-        })
-    return aligned_result
-
+    raw_speech = res[0]["text"]
+    pattern = r'<\|.*?\|>'
+    result = re.split(pattern, raw_speech)  # 分割字符串并自动删除各种标记
+    return [s.strip() for s in result if s.strip()]
 
 def is_audio_file(file_path: str) -> bool:
     """
@@ -141,13 +56,7 @@ def is_audio_file(file_path: str) -> bool:
         return any(file_path.lower().endswith(ext) for ext in audio_extensions)
 
 # 单音频文件处理
-def process_single_audio(diarization_pipe: DiarizationPipeline, whisper_pipe: pipeline, input_path: str):
-    """
-    处理单个音频文件
-    :param diarization_pipe: 说话人分离模型
-    :param whisper_pipe: 语音识别模型
-    :param input_path: 输入音频文件路径
-    """
+def process_single_audio(model: AutoModel, input_path: str):
     if not is_audio_file(input_path):
         print(f"{input_path} is not a valid audio file.")
         return
@@ -158,42 +67,25 @@ def process_single_audio(diarization_pipe: DiarizationPipeline, whisper_pipe: pi
         print(f"Audio file {input_path} is empty.")
         return
     try:
-        wav_path = preprocess_audio(input_path)
-        speaker_segments = speaker_diarization(diarization_pipe, wav_path)
-        transcription = speech_recognition(whisper_pipe, wav_path, speaker_segments)
-        conversation = ""
-        for segment in transcription:
-            start = segment["start"]
-            end = segment["end"]
-            speaker = segment["speaker"]
-            text = segment["text"]
-            conversation += f"{speaker}({start}, {end}): {text}\n"
-        output_path = f"{input_path}.txt"
+        transcription = speech_recognition(model, input_path)
+        output_path = os.path.abspath(input_path) + ".txt"
         if os.path.exists(output_path):
             os.remove(output_path)
         print(f"parse {input_path} to:")
-        print(conversation)
+        print("\n".join(transcription))
         with open(output_path, "w", encoding="utf-8") as f:
-            f.write(conversation)
+            f.write("\n".join(transcription))
     except Exception as e:
         print(f"Error processing {input_path}: {e}")
-    finally:
-        if wav_path and os.path.exists(wav_path):
-            os.remove(wav_path)
 
-def process_directory_audios(diarization_pipe: DiarizationPipeline, whisper_pipe: pipeline, input_dir: str):
-    """
-    处理目录下的所有音频文件
-    :param diarization_pipe: 说话人分离模型
-    :param whisper_pipe: 语音识别模型
-    :param input_dir: 输入目录路径
-    """
+
+def process_directory_audios(model: AutoModel, input_dir: str):
     for root_path, _, file_names in os.walk(input_dir):
         for file_name in file_names:
             file_path = os.path.join(root_path, file_name)
             if is_audio_file(file_path):
                 print(f"Processing {file_path}...")
-                process_single_audio(diarization_pipe, whisper_pipe, file_path)            
+                process_single_audio(model, file_path)            
 
 if __name__ == "__main__":
     try:
@@ -202,16 +94,16 @@ if __name__ == "__main__":
             print("Please provide the audio file or directory path.")
             exit(0)
 
-        diarization_pipe = load_local_pyannote_pipeline()
-        whisper_pipe = load_local_whisper_pipeline()
+        # 加载模型
+        model = load_sensevoice_model()
 
-        for param in params:
-            if os.path.isdir(param):
-                process_directory_audios(diarization_pipe, whisper_pipe, param)
-            elif os.path.isfile(param):
-                process_single_audio(diarization_pipe, whisper_pipe, param)
+        for input_path in params:
+            if os.path.isdir(input_path):
+                process_directory_audios(model, input_path)
+            elif os.path.isfile(input_path):
+                process_single_audio(model, input_path)
             else:
-                print(f"{param} is not a valid file or directory.")
+                print(f"{input_path} is not a valid file or directory.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         exit(1)
