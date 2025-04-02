@@ -4,7 +4,6 @@ import io
 import os
 from pathlib import Path
 import re
-import time
 import magic
 from pyannote.audio import Pipeline
 import torch
@@ -13,7 +12,6 @@ from common import get_duration, get_executable_directory, load_args
 import librosa
 import noisereduce as nr
 import soundfile as sf
-import numpy as np
 from funasr import AutoModel
 
 ROOT_DIR = get_executable_directory()
@@ -22,10 +20,10 @@ Model_Config_Pyannote = os.path.join(ROOT_DIR, "models", "pyannote", "speaker-di
 def load_sensevoice_model() -> AutoModel:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = AutoModel(
+        disable_update=True,
         model="iic/SenseVoiceSmall",
         trust_remote_code=True,
         remote_code="./model.py",  
-        vad_kwargs={"max_single_segment_time": 30000},
         device=device,
         dtype="fp16" if torch.cuda.is_available() else "fp32",  # GPU使用半精度加速
     )
@@ -38,7 +36,7 @@ def speech_recognition_batch(model: AutoModel, audio_pathes: list[io.BytesIO]) -
         language="zh",  # "zh", "en", "yue", "ja", "ko", "nospeech"
         use_itn=True,
         batch_size_s=60,
-        merge_vad=False,  #
+        merge_vad=True,  #
         merge_length_s=15,
     )
     result = []
