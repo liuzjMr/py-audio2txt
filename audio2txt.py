@@ -163,20 +163,20 @@ if __name__ == "__main__":
             print("  -h, --help      Show this help message")
             print("  -s, --speeker   Number of speakers (default: 2)")
             exit(0)
-        batch_size = int(options.get("s", options.get("speeker", 2)))
+        num_speakers = int(options.get("s", options.get("speeker", 2)))
         model = load_sensevoice_model()
         pipeline = load_local_pyannote_pipeline()
         for input_path in params:
             if os.path.isfile(input_path):
                 if is_audio_file(input_path):
-                    transcript(input_path, batch_size, pipeline, model)
+                    transcript(input_path, num_speakers, pipeline, model)
                 else:
                     print(f"{input_path} is not a valid audio file.")
             elif os.path.isdir(input_path):
                 audio_files = glob.glob(os.path.join(input_path, "**/*.*"), recursive=True)
                 audio_files = [f for f in audio_files if is_audio_file(f)]
                 for audio_file in audio_files:
-                    transcript(audio_file, batch_size, pipeline, model)
+                    transcript(audio_file, num_speakers, pipeline, model)
             else:
                 print(f"{input_path} is not a valid file or directory.")
     except KeyboardInterrupt:
