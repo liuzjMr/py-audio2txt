@@ -6,4 +6,3 @@ transformers==4.50.3
 pydub==0.25.1
 resampy==0.4.3
 addict==2.4.0
-pyinstaller==6.12.0
