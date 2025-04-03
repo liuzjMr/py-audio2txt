@@ -164,7 +164,7 @@ def collect_audio_files(paths: list[str]) -> list[str]:
 
 def save_transcript(original_path: str, content: str):
     """保存转写结果到原路径同级目录"""
-    txt_path = f"{original_path}.transcript.txt"
+    txt_path = f"{original_path}.txt"
     if os.path.exists(txt_path):
         os.remove(txt_path)  # 删除已存在的文件
     with open(txt_path, 'w', encoding='utf-8') as f:
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         print("License: Apache-2.0")
         print("Dependency: ffmpeg, libsndfile")
         exit(0)
-    if "h" in options or "help" in options:
+    if "h" in options or "help" in options or len(params) == 0:
         print("Usage: audio2txt [options] <audio_file> <audio_dir> ...")
         print("Dependency: ffmpeg, libsndfile")
         print("Options:")
@@ -259,9 +259,5 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
     logger.info(f"当前日志级别: {log_level}")
     logger.info(f"当前批处理大小: {batch_size}")
-
-    if len(params) == 0:
-        logger.error("请提供音频文件或目录路径")
-        exit(1)
 
     main(input_paths=params, batch_size=batch_size)
