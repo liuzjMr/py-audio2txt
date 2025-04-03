@@ -4,7 +4,6 @@ import io
 import os
 from pathlib import Path
 import re
-import magic
 from pyannote.audio import Pipeline
 import torch
 from pydub import AudioSegment
@@ -105,16 +104,15 @@ def split_speaker_audios(wav_bytes: io.BytesIO, segments: list[dict]) -> list[io
 
 def is_audio_file(file_path: str) -> bool:
     """
-    判断文件是否为音频文件
-    :param file_path: 文件路径
-    :return: 是否为音频文件
-    """    
+    判断文件是否为音频文件(通过pydub加载文件头信息来判定)
+    """
     try:
-        mime = magic.Magic(mime=True)
-        file_type = mime.from_file(file_path)
-        return file_type.startswith('audio/')
-    except ImportError:
-        audio_extensions = ['.wav', '.mp3', '.flac', '.aac', '.ogg']
+        # 尝试加载文件头信息（无需完整加载音频）
+        AudioSegment.from_file(file_path).dBsFS
+        return True
+    except:
+        # 补充扩展名验证（兼容pydub不支持但实际有效的格式）
+        audio_extensions = ['.wav', '.mp3', '.flac', '.aac', '.ogg', '.m4a']
         return any(file_path.lower().endswith(ext) for ext in audio_extensions)
     
     
