@@ -22,16 +22,19 @@
     ```
 
 2. 执行脚本
-``` sh /path/to/py-audio2txt/audio2txt -h ```
-```txt
-Usage: audio2txt [options] <audio_file> <audio_dir> ...
-Dependency: ffmpeg, libsndfile
-Options:
--v, --version   Show version
--h, --help      Show this help message
--b, --batch     Batch size (default: 10)
--l, --log-level Log level (default: INFO)
-```
+    ``` shell
+    chmod a+x /path/to/py-audio2txt/audio2txt.sh
+    sh /path/to/py-audio2txt/audio2txt.sh -h 
+    ```
+    ```txt
+    Usage: audio2txt [options] <audio_file> <audio_dir> ...
+    Dependency: ffmpeg, libsndfile
+    Options:
+    -v, --version   Show version
+    -h, --help      Show this help message
+    -b, --batch     Batch size (default: 10)
+    -l, --log-level Log level (default: INFO)
+    ```
 
 # Models
 本项目依赖以下AI模型  
