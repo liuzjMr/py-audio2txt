@@ -171,7 +171,8 @@ def save_transcript(original_path: str, content: str):
         f.write(content)
     logger.debug(f"转写结果已保存至：{txt_path}")
 
-def process_batch(enhancer_pipe, inference_pipeline : pipeline, file_batch: list[str]):
+def process_batch(enhancer_pipe, inference_pipeline : pipeline, file_batch: list[str]) -> int:
+    count = 0
     try:
         # 预处理阶段
         preprocessed_files = []
@@ -212,11 +213,14 @@ def process_batch(enhancer_pipe, inference_pipeline : pipeline, file_batch: list
             # 保存转写结果
             if original_path:
                 save_transcript(original_path, audio_content)
+                count += 1
             # 清理临时文件
             if os.path.exists(enhanced_path):
                 os.remove(enhanced_path)
+        return count
     except Exception as batch_error:
         logger.error(f"批量处理失败: {str(batch_error)}")
+        return count
 
 
 def main(input_paths: list[str], batch_size: int = 10):
@@ -231,10 +235,14 @@ def main(input_paths: list[str], batch_size: int = 10):
     # 加载模型
     enhancer_pipe, inference_pipeline = load_modelscope_pipelines()
 
+    total = 0
     for i in range(0, len(audio_files), batch_size):
         batch = audio_files[i:i+batch_size]
-        logger.debug(f"\n正在处理第 {i//batch_size +1} 批文件（{len(batch)}个）")
-        process_batch(enhancer_pipe, inference_pipeline, batch)
+        logger.info(f"\n正在处理第 {i//batch_size +1} 批文件（{len(batch)}个）")
+        count = process_batch(enhancer_pipe, inference_pipeline, batch)
+        total += count
+        logger.info(f"第 {i//batch_size +1} 批（{len(batch)}个）文件处理完成, 共转写 {count} 个文件")
+    logger.info(f"所有{len(audio_files)}个文件处理完成, 共转写 {total} 个文件")
 
 if __name__ == "__main__":
     options, params = load_args()
