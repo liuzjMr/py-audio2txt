@@ -12,6 +12,7 @@
     ```
 # Usage
 在原语音文件相同位置生成转写文件，如 /path/to/some.mp3, 生成 /path/to/some.mp3.txt
+``` python audio2txt.py ```
 ```txt
 Usage: audio2txt [options] <audio_file> <audio_dir> ...
 Dependency: ffmpeg, libsndfile
@@ -22,8 +23,8 @@ Options:
 -l, --log-level Log level (default: INFO)
 ```
 
-# models
-本项目依赖以下AI模型，首次运行会自动下载到：/home/your_user_name/.cache/modelscope/hub/models/ 目录
+# Models
+本项目使用以下AI模型
 1. 降噪增强：[iic/speech_zipenhancer_ans_multiloss_16k_base](https://modelscope.cn/models/iic/speech_zipenhancer_ans_multiloss_16k_base)
 2. 语音识别：[iic/speech_paraformer-large-vad-punc-spk_asr_nat-zh-cn](https://modelscope.cn/models/iic/speech_paraformer-large-vad-punc-spk_asr_nat-zh-cn)
 3. 端点检测: [iic/speech_fsmn_vad_zh-cn-16k-common-pytorch](https://modelscope.cn/models/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch)
