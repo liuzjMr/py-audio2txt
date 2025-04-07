@@ -26,7 +26,7 @@ def load_modelscope_pipelines() -> tuple[pipeline, pipeline]:
     # 通话转写
     inference_pipeline = pipeline(
         task=Tasks.auto_speech_recognition,
-        model='iic/speech_paraformer-large-vad-punc-spk_asr_nat-zh-cn', model_revision='v2.0.4', # 语音识别
+        model='iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch', model_revision='v2.0.5', # 语音识别
         vad_model='iic/speech_fsmn_vad_zh-cn-16k-common-pytorch', vad_model_revision="v2.0.4",      # 语音端点检测
         punc_model='iic/punc_ct-transformer_cn-en-common-vocab471067-large', punc_model_revision="v2.0.4", # 语音标点
         spk_model="iic/speech_campplus_sv_zh-cn_16k-common", spk_model_revision="v2.0.2", # 说话人分离
@@ -84,9 +84,7 @@ def enhance_wav(enhancer_pipe : pipeline, input_path: str) -> str:
     :param input_path: 输入音频文件路径
     :return: 增强后的音频文件路径
     """
-    temp_id = os.path.splitext(os.path.basename(input_path))[0]
-    temp_dir = tempfile.gettempdir()
-    enhanced_path = os.path.join(temp_dir, f"enhanced_{temp_id}.wav")
+    enhanced_path = get_temp_path(f"enhanced_", suffix=".wav")
     
     try:
         enhancer_pipe(input_path, output_path=enhanced_path)

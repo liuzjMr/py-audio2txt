@@ -40,7 +40,7 @@
 本项目依赖以下AI模型  
 首次执行会自动下载到 /home/your-user-dir/.cache/modelscope/hub/models/
 1. 降噪增强：[iic/speech_zipenhancer_ans_multiloss_16k_base](https://modelscope.cn/models/iic/speech_zipenhancer_ans_multiloss_16k_base)
-2. 语音识别：[iic/speech_paraformer-large-vad-punc-spk_asr_nat-zh-cn](https://modelscope.cn/models/iic/speech_paraformer-large-vad-punc-spk_asr_nat-zh-cn)
+2. 语音识别：[iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch](https://modelscope.cn/models/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch)
 3. 端点检测: [iic/speech_fsmn_vad_zh-cn-16k-common-pytorch](https://modelscope.cn/models/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch)
 4. 语音标点：[iic/punc_ct-transformer_cn-en-common-vocab471067-large](https://modelscope.cn/models/iic/punc_ct-transformer_cn-en-common-vocab471067-large)
 5. 说话人分离：[iic/speech_campplus_sv_zh-cn_16k-common](https://modelscope.cn/models/iic/speech_campplus_sv_zh-cn_16k-common)
