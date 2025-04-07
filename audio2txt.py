@@ -39,7 +39,7 @@ def load_modelscope_pipelines() -> tuple[pipeline, pipeline]:
     # 通话转写
     inference_pipeline = pipeline(
         task=Tasks.auto_speech_recognition,
-        # model='iic/speech_paraformer-large-contextual_asr_nat-zh-cn-16k-common-vocab8404',  model_revision='v2.0.5', # 语音识别
+        # 改用支持热词的模型
         model='iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch', model_revision='v2.0.5', # 语音识别
         # model='iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch', model_revision='v2.0.5', # 语音识别
         vad_model='iic/speech_fsmn_vad_zh-cn-16k-common-pytorch', vad_model_revision="v2.0.4",      # 语音端点检测
@@ -110,12 +110,17 @@ def enhance_wav(enhancer_pipe : pipeline, input_path: str) -> str:
         logger.warning(f"使用原始音频文件替代: {input_path} -> {enhanced_path}")
         return input_path
     
-def mill2minutes(millseconds: int) -> str:
-    remain_secondes = int(millseconds % 1000)
+def mills2timestr(millseconds: int) -> str:
+    remain_mills = int(millseconds % 1000)
     total_seconds = int(millseconds // 1000)
     remain_seconds = int(total_seconds % 60)
     total_minutes = int(total_seconds // 60)
-    return f"{total_minutes:02d}:{remain_seconds:02d}.{remain_secondes:03d}"    
+    remain_minutes = int(total_minutes % 60)
+    total_hours = int(total_minutes // 60)
+    if total_hours > 0:
+        return f"{total_hours:02d}:{remain_minutes:02d}:{remain_seconds:02d}.{remain_mills:03d}"
+    elif total_minutes > 0:
+        return f"{total_minutes:02d}:{remain_seconds:02d}.{remain_mills:03d}"  
       
 def transcript_wavs(inference_pipeline : pipeline, hotword : str, wav_files: list[str], verbose: bool) -> list[dict[str, str]]:
     wav_contents = []
@@ -161,14 +166,14 @@ def transcript_wavs(inference_pipeline : pipeline, hotword : str, wav_files: lis
                     pre_line = current_line
                     pre_start = current_start
                 elif pre_speaker != current_speaker:
-                    contents.append(f"Speaker_{pre_speaker} {mill2minutes(pre_start)}: {pre_line}")
+                    contents.append(f"Speaker_{pre_speaker} {mills2timestr(pre_start)}: {pre_line}")
                     pre_speaker = current_speaker
                     pre_line = current_line
                     pre_start = current_start
                 else:
                     pre_line += current_line
             if pre_speaker is not None:
-                contents.append(f"Speaker_{pre_speaker} {mill2minutes(pre_start)}: {pre_line}")
+                contents.append(f"Speaker_{pre_speaker} {mills2timestr(pre_start)}: {pre_line}")
             wav_contents.append({"wav": wav_files[i], "content": "\n".join(contents)})
             if verbose:
                 logger.info(f"音频文件 {wav_files[i]} 转写结果：\n{wav_contents[-1]['content']}")
