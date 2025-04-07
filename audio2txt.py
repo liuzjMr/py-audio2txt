@@ -119,8 +119,8 @@ def mills2timestr(millseconds: int) -> str:
     total_hours = int(total_minutes // 60)
     if total_hours > 0:
         return f"{total_hours:02d}:{remain_minutes:02d}:{remain_seconds:02d}.{remain_mills:03d}"
-    elif total_minutes > 0:
-        return f"{total_minutes:02d}:{remain_seconds:02d}.{remain_mills:03d}"  
+    else:
+        return f"{remain_minutes:02d}:{remain_seconds:02d}.{remain_mills:03d}"  
       
 def transcript_wavs(inference_pipeline : pipeline, hotword : str, wav_files: list[str], verbose: bool) -> list[dict[str, str]]:
     wav_contents = []
