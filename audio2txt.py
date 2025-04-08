@@ -3,10 +3,15 @@ import os
 import sys
 import tempfile
 from typing import Optional
+import jieba
 from modelscope.pipelines import pipeline
 from pydub import AudioSegment
 from common import get_executable_directory, load_args
 from modelscope.utils.constant import Tasks
+
+# 设置jieba的临时目录，防止出现权限问题
+jieba.dt.tmp_dir = os.path.expanduser("~/.cache/")
+jieba.initialize()
 
 # 配置日志
 logging.basicConfig(
@@ -290,7 +295,7 @@ def main(input_paths: list[str], batch_size: int, hot_words_file: str, verbose: 
 if __name__ == "__main__":
     options, params = load_args()
     if "v" in options or "version" in options:
-        print("audio2txt Version: 1.0.0")
+        print("audio2txt Version: 1.1.0")
         print("Author: sssxyd@gmail.com")
         print("Repo: https://github.com/sssxyd/py-audio2txt")
         print("License: Apache-2.0")
