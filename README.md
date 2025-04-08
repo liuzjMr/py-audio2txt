@@ -8,6 +8,7 @@
 ## 文本摘要
 1. 扫描给定的txt文件/文件夹，在原txt文件相同位置生成摘要文件，如 /path/to/some.mp3.txt, 生成 /path/to/some.mp3.txt.md
 2. 支持的文本格式为：UTF-8编码的txt
+3. 可编辑 template.txt 自定义摘要提示词
 
 # 依赖
 1. ffmpeg
@@ -38,12 +39,12 @@ sh /path/to/py-audio2txt/audio2txt.sh --verbose /path/to/a.mp3 /path/to/b.ogg /p
 Usage: audio2txt [options] <audio_file> <audio_dir> ...
 Dependency: ffmpeg, libsndfile
 Options:
--v, --version   Show version
--h, --help      Show this help message
--b, --batch     Batch size (default: 10)
--l, --log-level Log level (default: INFO)
--w, --hot-words Hot words file path (default: hotwords.txt)
---verbose   Verbose mode
+  -v, --version   Show version
+  -h, --help      Show this help message
+  -b, --batch     Batch size (default: 10)
+  -l, --log-level Log level (default: INFO)
+  -w, --hot-words Hot words file path (default: hotwords.txt)
+  --verbose   Verbose mode
 ``` 
 
 ## 文本摘要
@@ -55,10 +56,11 @@ sh /path/to/py-audio2txt/summary.sh --verbose /path/to/a.txt /path/to/txt_dir1
 ```txt
 Usage: summary [options] <txt_file> <txt_dir> ...
 Options:
--v, --version   Show version
--h, --help      Show this help message
--l, --log-level Log level (default: INFO)
---verbose   Verbose mode
+  -v, --version   Show version
+  -h, --help      Show this help message
+  -l, --log-level Log level (default: INFO)
+  -t, --template   Summary template file (default: template.txt)
+  --verbose   Verbose mode
 ``` 
 
 # Models

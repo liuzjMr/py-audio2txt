@@ -3,7 +3,7 @@ import os
 import sys
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 import torch
-from common import load_args
+from common import get_executable_directory, load_args
 
 # 配置日志
 logging.basicConfig(
@@ -14,8 +14,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TextSummarizer:
-    def __init__(self, verbose : bool = False):
+    def __init__(self, template : str, verbose : bool = False):
+        self.template = template
         self.verbose = verbose
+
+        if self.verbose:
+            logger.info("使用的摘要模板:")
+            logger.info(self.template)
 
         model_path = "Qwen/Qwen2.5-7B-Instruct"
         device="cuda" if torch.cuda.is_available() else "cpu"
@@ -60,21 +65,8 @@ class TextSummarizer:
 
             processed_text = self._truncate_text(raw_text)
 
-            # 构建专业提示模板（参考网页4的提示词设计）
-            system_prompt = """作为专业文本分析师，请按以下结构生成摘要：
-            # 核心主题
-            1句话概括
-
-            # 关键要点 
-            - 要点1(不超过15字)
-            - 要点2
-            - ...(3-5个)
-
-            # 全文总结 
-            1句话说明文本的主要内容和结论"""
-
             prompt = (
-                f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+                f"<|im_start|>system\n{self.template}<|im_end|>\n"
                 f"<|im_start|>user\n请分析以下文本：\n{processed_text}<|im_end|>\n"
                 "<|im_start|>assistant\n"
             )
@@ -146,7 +138,7 @@ class TextSummarizer:
                 logger.info(f"摘要内容: {summary}")
             output_file = os.path.abspath(txt_file) + ".md"
             if os.path.exists(output_file):
-                logger.debug(f"摘要文件已存在: {output_file}, 将覆盖")
+                logger.debug(f"摘要文件已存在: {output_file}, 将被覆盖")
                 os.remove(output_file)
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(summary)
@@ -169,8 +161,21 @@ if __name__ == "__main__":
         print("  -v, --version   Show version")
         print("  -h, --help      Show this help message")
         print("  -l, --log-level Log level (default: INFO)")
+        print("  -t, --template   Summary template file (default: template.txt)")
         print("  --verbose   Verbose mode")
         exit(0)    
     log_level = options.get("l", options.get("log-level", "INFO")).upper()
-    summarizer = TextSummarizer(options.get("verbose", False))
+    prompt_file = options.get("t", options.get("template", ""))
+    if prompt_file == "":
+        prompt_file = os.path.join(get_executable_directory(), "template.txt")
+    if not os.path.exists(prompt_file):
+        logger.error(f"摘要模板文件不存在: {prompt_file}")
+        exit(1)
+    with open(prompt_file, 'r', encoding='utf-8') as f:
+        prompt = f.read().strip()
+    if not prompt:
+        logger.error(f"摘要模板文件内容为空: {prompt_file}")
+        exit(1)
+
+    summarizer = TextSummarizer(template=prompt, verbose=options.get("verbose", False))
     summarizer.scan_and_summarize(params)
