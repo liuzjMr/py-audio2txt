@@ -1,9 +1,10 @@
+import datetime
 import logging
 import os
 import sys
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 import torch
-from common import get_executable_directory, load_args
+from common import get_duration, get_executable_directory, load_args
 
 # 配置日志
 logging.basicConfig(
@@ -65,11 +66,7 @@ class TextSummarizer:
 
             processed_text = self._truncate_text(raw_text)
 
-            prompt = (
-                f"<|im_start|>system\n{self.template}<|im_end|>\n"
-                f"<|im_start|>user\n请分析以下文本：\n{processed_text}<|im_end|>\n"
-                "<|im_start|>assistant\n"
-            )
+            prompt = self.template.replace("${text}", processed_text)
 
             # 生成摘要
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
@@ -128,7 +125,10 @@ class TextSummarizer:
         logger.info(f"找到 {len(txt_files)} 个有效文本文件")
         count = 0
         for txt_file in txt_files:
-            logger.info(f"正在处理文件: {txt_file}")
+            if self.verbose:
+                logger.info(f"正在处理文件: {txt_file}")
+            else:
+                logger.debug(f"正在处理文件: {txt_file}")
             summary = self.generate_summary(txt_file)
             if summary == "":
                 logger.error(f"文件 {txt_file} 处理失败")
@@ -142,12 +142,16 @@ class TextSummarizer:
                 os.remove(output_file)
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(summary)
-            logger.info(f"文件{txt_file}的摘要已保存到: {output_file}")
-        logger.info(f"共计 {len(txt_files)} 个非摘要文本文件，成功对 {count} 个文件生成摘要")
+            if self.verbose:
+                logger.info(f"文件{txt_file}的摘要已保存到: {output_file}")
+            else:
+                logger.debug(f"文件{txt_file}的摘要已保存到: {output_file}")
+        logger.info(f"共计 {len(txt_files)} 个文本文件，成功对 {count} 个文件生成摘要")
         return txt_files
 
 # 使用示例
 if __name__ == "__main__":
+    start_time = datetime.datetime.now()
     options, params = load_args()
     if "v" in options or "version" in options:
         print("summary Version: 1.1.0")
@@ -176,6 +180,8 @@ if __name__ == "__main__":
     if not prompt:
         logger.error(f"摘要模板文件内容为空: {prompt_file}")
         exit(1)
-
+    
     summarizer = TextSummarizer(template=prompt, verbose=options.get("verbose", False))
     summarizer.scan_and_summarize(params)
+    logger.info(f"总耗时: {get_duration(start_time)}")
+    logger.info("处理完成，感谢使用！")

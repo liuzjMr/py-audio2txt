@@ -20,10 +20,12 @@ def get_duration(start_time: datetime) -> str:
 
     # 提取天、秒、小时、分钟
     days = duration.days
-    seconds = duration.seconds
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    seconds = seconds % 60
+    day_seconds = duration.seconds
+    hours = day_seconds // 3600
+    day_seconds = day_seconds % 3600
+    minutes = day_seconds // 60
+    day_seconds = day_seconds % 60
+    seconds = day_seconds // 1
 
     # 构建人类友好的字符串
     parts = []

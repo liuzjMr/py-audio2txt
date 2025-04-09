@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import sys
@@ -6,7 +7,7 @@ from typing import Optional
 import jieba
 from modelscope.pipelines import pipeline
 from pydub import AudioSegment
-from common import get_executable_directory, load_args
+from common import get_duration, get_executable_directory, load_args
 from modelscope.utils.constant import Tasks
 
 # 设置jieba的临时目录，防止出现权限问题
@@ -292,7 +293,9 @@ def main(input_paths: list[str], batch_size: int, hot_words_file: str, verbose: 
         logger.info(f"第 {i//batch_size +1} 批（{len(batch)}个）文件处理完成, 共转写 {count} 个文件")
     logger.info(f"所有{len(audio_files)}个文件处理完成, 共转写 {total} 个文件")
 
+
 if __name__ == "__main__":
+    start_time = datetime.datetime.now()
     options, params = load_args()
     if "v" in options or "version" in options:
         print("audio2txt Version: 1.1.0")
@@ -324,3 +327,5 @@ if __name__ == "__main__":
     logger.info(f"当前批处理大小: {batch_size}")
     logger.info(f"当前热词文件: {hot_words_file}")
     main(input_paths=params, batch_size=batch_size, hot_words_file=hot_words_file, verbose=verbose)
+    logger.info(f"总耗时: {get_duration(start_time)}")
+    logger.info("处理完成，感谢使用！")
