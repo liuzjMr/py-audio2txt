@@ -29,7 +29,7 @@ pip install -r requirements.txt
 deactivate
 ```
 
-## 语言转写
+## 语音转写
 大约需要3.6G显存，支持多进程，根据你的显存大小设置进程数
 ``` shell
 chmod a+x /path/to/py-audio2txt/audio2txt.sh
