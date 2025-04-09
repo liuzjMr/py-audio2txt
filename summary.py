@@ -1,7 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import logging
 import os
 import sys
+import threading
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 import torch
 from common import get_duration, get_executable_directory, load_args
@@ -95,21 +97,40 @@ class TextSummarizer:
     def is_summary_file(self, file_path : str):
         if file_path.endswith(".txt.md"):
             return True
-        return False
+        return False   
     
-    def collect_audio_files(self, paths: list[str]) -> list[str]:
-        """递归查找有效文本文件"""
+    def collect_txt_files(self, paths: list[str]) -> list[str]:
+        file_queue = []
+        result_lock = threading.Lock()
         txt_files = []
-        for path in paths:
+
+        if len(paths) == 0:
+            logger.error("没有提供文件或目录路径")
+            return txt_files
+
+        threads = os.cpu_count() * 2
+        logger.info(f"使用 {threads} 个线程扫描目录")
+
+        # 第一阶段：多线程遍历目录结构
+        def scan_dirs(path):
             if os.path.isfile(path):
-                if not self.is_summary_file(path) and self.is_text_file(path):
-                    txt_files.append(os.path.abspath(path))
-            elif os.path.isdir(path):
+                file_queue.append(path)
+            else:
                 for root, _, files in os.walk(path):
-                    for f in files:
-                        full_path = os.path.join(root, f)
-                        if not self.is_summary_file(full_path) and self.is_text_file(full_path):
-                            txt_files.append(os.path.abspath(full_path))
+                    file_queue.extend(os.path.join(root, f) for f in files)
+
+        with ThreadPoolExecutor(max_workers=threads) as dir_executor:
+            dir_executor.map(scan_dirs, paths)
+
+        # 第二阶段：多线程检测音频文件
+        def check_file(file_path):
+            if self.is_summary_file(file_path):
+                with result_lock:
+                    txt_files.append(os.path.abspath(file_path))
+
+        with ThreadPoolExecutor(max_workers=threads) as file_executor:
+            file_executor.map(check_file, file_queue)
+
         return txt_files    
         
     def scan_and_summarize(self, pathes):
@@ -118,7 +139,7 @@ class TextSummarizer:
             logger.error("没有提供文件或目录路径")
             return
 
-        txt_files = self.collect_audio_files(pathes)
+        txt_files = self.collect_txt_files(pathes)
         if not txt_files:
             logger.error("没有找到有效的文本文件")
             return

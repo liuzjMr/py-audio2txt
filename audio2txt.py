@@ -1,9 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import logging
 import multiprocessing
 import os
 import sys
 import tempfile
+import threading
 from typing import Optional
 import jieba
 from modelscope.pipelines import pipeline
@@ -193,18 +195,37 @@ def transcript_wavs(inference_pipeline : pipeline, hotword : str, wav_files: lis
     
 
 def collect_audio_files(paths: list[str]) -> list[str]:
-    """递归查找有效音频文件"""
+    file_queue = []
+    result_lock = threading.Lock()
     audio_files = []
-    for path in paths:
+
+    if len(paths) == 0:
+        logger.error("没有提供文件或目录路径")
+        return audio_files
+
+    threads = os.cpu_count() * 2
+    logger.info(f"使用 {threads} 个线程扫描目录")
+
+    # 第一阶段：多线程遍历目录结构
+    def scan_dirs(path):
         if os.path.isfile(path):
-            if is_audio_file(path):
-                audio_files.append(os.path.abspath(path))
-        elif os.path.isdir(path):
+            file_queue.append(path)
+        else:
             for root, _, files in os.walk(path):
-                for f in files:
-                    full_path = os.path.join(root, f)
-                    if is_audio_file(full_path):
-                        audio_files.append(os.path.abspath(full_path))
+                file_queue.extend(os.path.join(root, f) for f in files)
+
+    with ThreadPoolExecutor(max_workers=threads) as dir_executor:
+        dir_executor.map(scan_dirs, paths)
+
+    # 第二阶段：多线程检测音频文件
+    def check_file(file_path):
+        if is_audio_file(file_path):
+            with result_lock:
+                audio_files.append(os.path.abspath(file_path))
+
+    with ThreadPoolExecutor(max_workers=threads) as file_executor:
+        file_executor.map(check_file, file_queue)
+
     return audio_files
 
 def save_transcript(original_path: str, content: str):
