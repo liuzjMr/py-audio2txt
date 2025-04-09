@@ -1,5 +1,6 @@
 import datetime
 import logging
+import multiprocessing
 import os
 import sys
 import tempfile
@@ -266,8 +267,52 @@ def process_batch(enhancer_pipe, inference_pipeline : pipeline, hotword: str, fi
         logger.error(f"批量处理失败: {str(batch_error)}")
         return count
 
+def process_single(audio_files : list[str], batch_size : int, hotword : str, verbose : bool):
+    """单进程处理"""
+    enhancer_pipe, inference_pipeline = load_modelscope_pipelines()
+    total = 0
+    for i in range(0, len(audio_files), batch_size):
+        batch = audio_files[i:i+batch_size]
+        count = process_batch(enhancer_pipe, inference_pipeline, hotword, batch, verbose)
+        total += count
+        logger.info(f"第 {i//batch_size + 1} 批（{len(batch)}个）文件处理完成，共转写 {count} 个文件")
+    logger.info(f"所有 {len(audio_files)} 个文件处理完成，共转写 {total} 个文件")      
 
-def main(input_paths: list[str], batch_size: int, hot_words_file: str, verbose: bool):
+def process_single_worker(audio_files_chunk : list[str], batch_size : int, hotword : str, verbose : bool) -> int:
+    """子进程处理函数"""
+    try:
+        enhancer_pipe, inference_pipeline = load_modelscope_pipelines()
+        total = 0
+        for i in range(0, len(audio_files_chunk), batch_size):
+            batch = audio_files_chunk[i:i+batch_size]
+            count = process_batch(enhancer_pipe, inference_pipeline, hotword, batch, verbose)
+            total += count
+            logger.info(f"子进程处理批次 {i//batch_size + 1}，转写 {count} 个文件")
+        return total
+    except Exception as e:
+        logger.error(f"子进程处理失败: {str(e)}")
+        return 0
+    
+def process_multi(audio_files : list[str], batch_size : int, hotword : str, verbose : bool, process : int):
+    """多进程处理"""
+    # 分割文件列表
+    chunk_size = len(audio_files) // process
+    chunks = []
+    for i in range(process):
+        start = i * chunk_size
+        end = start + chunk_size if i != process-1 else len(audio_files)
+        chunks.append(audio_files[start:end])
+    
+    # 启动多进程池
+    with multiprocessing.Pool(processes=process) as pool:
+        args = [(chunk, batch_size, hotword, verbose) for chunk in chunks]
+        results = pool.starmap(process_single_worker, args)
+    
+    total = sum(results)
+    logger.info(f"所有 {len(audio_files)} 个文件处理完成，共转写 {total} 个文件")      
+
+
+def main(input_paths: list[str], process: int, batch_size: int, hot_words_file: str, verbose: bool):
     """主处理流程"""
     audio_files = collect_audio_files(input_paths)
     if len(audio_files) == 0:
@@ -279,20 +324,12 @@ def main(input_paths: list[str], batch_size: int, hot_words_file: str, verbose: 
     # 加载模型
     hot_words = load_hot_words(hot_words_file)
     hotword = '' if len(hot_words) == 0 else ' '.join(hot_words)
-    enhancer_pipe, inference_pipeline = load_modelscope_pipelines()
-    if verbose:
-        logger.info("hotword: " + hotword)
-    logger.info("模型加载完成")
-
-    total = 0
-    for i in range(0, len(audio_files), batch_size):
-        batch = audio_files[i:i+batch_size]
-        logger.info(f"\n正在处理第 {i//batch_size +1} 批文件（{len(batch)}个）")
-        count = process_batch(enhancer_pipe, inference_pipeline, hotword, batch, verbose)
-        total += count
-        logger.info(f"第 {i//batch_size +1} 批（{len(batch)}个）文件处理完成, 共转写 {count} 个文件")
-    logger.info(f"所有{len(audio_files)}个文件处理完成, 共转写 {total} 个文件")
-
+    if process == 1:
+        logger.info("单进程处理")
+        process_single(audio_files=audio_files, batch_size=batch_size, hotword=hotword, verbose=verbose)
+    else:
+        logger.info(f"多进程处理，使用 {process} 个进程")
+        process_multi(audio_files=audio_files, batch_size=batch_size, hotword=hotword, verbose=verbose, process=process)
 
 if __name__ == "__main__":
     start_time = datetime.datetime.now()
@@ -310,11 +347,13 @@ if __name__ == "__main__":
         print("Options:")
         print("  -v, --version   Show version")
         print("  -h, --help      Show this help message")
+        print("  -p, --process   Number of processes (default: 1)")
         print("  -b, --batch     Batch size (default: 10)")
         print("  -l, --log-level Log level (default: INFO)")
         print("  -w, --hot-words Hot words file path (default: hotwords.txt)")
         print("  --verbose   Verbose mode")
         exit(0)    
+    process = int(options.get("p", options.get("process", 1)))
     batch_size = int(options.get("b", options.get("batch", 10)))
     log_level = options.get("l", options.get("log-level", "INFO")).upper()
     hot_words_file = options.get("w", options.get("hot-words", ""))
@@ -326,6 +365,6 @@ if __name__ == "__main__":
     logger.info(f"当前日志级别: {log_level}")
     logger.info(f"当前批处理大小: {batch_size}")
     logger.info(f"当前热词文件: {hot_words_file}")
-    main(input_paths=params, batch_size=batch_size, hot_words_file=hot_words_file, verbose=verbose)
+    main(input_paths=params, process=process, batch_size=batch_size, hot_words_file=hot_words_file, verbose=verbose)
     logger.info(f"总耗时: {get_duration(start_time)}")
     logger.info("处理完成，感谢使用！")

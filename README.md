@@ -30,10 +30,11 @@ deactivate
 ```
 
 ## 语言转写
+大约需要3.6G显存，支持多进程，根据你的显存大小设置进程数
 ``` shell
 chmod a+x /path/to/py-audio2txt/audio2txt.sh
 sh /path/to/py-audio2txt/audio2txt.sh -h 
-sh /path/to/py-audio2txt/audio2txt.sh --verbose /path/to/a.mp3 /path/to/b.ogg /path/to/audio_dir
+sh /path/to/py-audio2txt/audio2txt.sh --verbose -p4 /path/to/a.mp3 /path/to/b.ogg /path/to/audio_dir
 ```
 ```txt
 Usage: audio2txt [options] <audio_file> <audio_dir> ...
@@ -41,6 +42,7 @@ Dependency: ffmpeg, libsndfile
 Options:
   -v, --version   Show version
   -h, --help      Show this help message
+  -p, --process   Number of processes (default: 1)  
   -b, --batch     Batch size (default: 10)
   -l, --log-level Log level (default: INFO)
   -w, --hot-words Hot words file path (default: hotwords.txt)
@@ -48,6 +50,7 @@ Options:
 ``` 
 
 ## 文本摘要
+大约需要16G显存，单进程
 ``` shell
 chmod a+x /path/to/py-audio2txt/summary.sh
 sh /path/to/py-audio2txt/summary.sh -h 
