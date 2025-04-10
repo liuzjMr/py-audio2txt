@@ -17,9 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TextSummarizer:
-    def __init__(self, template : str, verbose : bool = False):
+    def __init__(self, template : str, verbose : bool = False, overwrite : bool = False):
         self.template = template
         self.verbose = verbose
+        self.overwrite = overwrite
 
         if self.verbose:
             logger.info("使用的摘要模板:")
@@ -146,10 +147,12 @@ class TextSummarizer:
         logger.info(f"找到 {len(txt_files)} 个有效文本文件")
         count = 0
         for txt_file in txt_files:
+            output_file = os.path.abspath(txt_file) + ".md"
+            if os.path.exists(output_file) and not self.overwrite:
+                logger.info(f"摘要文件已存在: {output_file}, 跳过")
+                continue
             if self.verbose:
                 logger.info(f"正在处理文件: {txt_file}")
-            else:
-                logger.debug(f"正在处理文件: {txt_file}")
             summary = self.generate_summary(txt_file)
             if summary == "":
                 logger.error(f"文件 {txt_file} 处理失败")
@@ -157,16 +160,12 @@ class TextSummarizer:
             count += 1
             if self.verbose:
                 logger.info(f"摘要内容: {summary}")
-            output_file = os.path.abspath(txt_file) + ".md"
             if os.path.exists(output_file):
-                logger.debug(f"摘要文件已存在: {output_file}, 将被覆盖")
                 os.remove(output_file)
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(summary)
             if self.verbose:
                 logger.info(f"文件{txt_file}的摘要已保存到: {output_file}")
-            else:
-                logger.debug(f"文件{txt_file}的摘要已保存到: {output_file}")
         logger.info(f"共计 {len(txt_files)} 个文本文件，成功对 {count} 个文件生成摘要")
         return txt_files
 
@@ -187,6 +186,7 @@ if __name__ == "__main__":
         print("  -h, --help      Show this help message")
         print("  -l, --log-level Log level (default: INFO)")
         print("  -t, --template   Summary template file (default: template.txt)")
+        print("  --overwrite   Overwrite existing file")
         print("  --verbose   Verbose mode")
         exit(0)    
     log_level = options.get("l", options.get("log-level", "INFO")).upper()
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         logger.error(f"摘要模板文件内容为空: {prompt_file}")
         exit(1)
     
-    summarizer = TextSummarizer(template=prompt, verbose=options.get("verbose", False))
+    summarizer = TextSummarizer(template=prompt, verbose=options.get("verbose", False), overwrite=options.get("overwrite", False))
     summarizer.scan_and_summarize(params)
     logger.info(f"总耗时: {get_duration(start_time)}")
     logger.info("处理完成，感谢使用！")

@@ -73,20 +73,32 @@ def load_args() -> tuple[dict[str, str], list[str]]:
         arg = sys.argv[i]
         if arg.startswith('--') and len(arg) > 2:
             # 处理长参数（如 --depth=2）
-            key_value = arg[2:].split('=', 1)
-            key = key_value[0]
-            value = key_value[1].strip() if len(key_value) > 1 else True
+            if '=' in arg:
+                # 分割等号后的部分（如 --depth=2 → 值取 "2"）
+                key_value = arg[2:].split('=', 1)
+                key = key_value[0]
+                value = key_value[1].strip()
+            else:
+                # 如果没有等号，则将值设为 True
+                key = arg[2:]
+                value = True
+            # 将参数名转换为小写并存储
             options[key.lower()] = value
         elif arg.startswith('-') and len(arg) > 1:
             # 处理短参数（如 -d=2、-d2、-d）
             key = arg[1]  # 参数名为第一个字符
-            value_part = arg[2:]
-            if '=' in value_part:
-                # 分割等号后的部分（如 -d=2 → 值取 "2"）
-                _, value = value_part.split('=', 1)
-                value = value.strip()
+            if len(arg) == 2:
+                # 如果只有一个字符，则将值设为 True
+                value = True
             else:
-                value = value_part.strip() if value_part else True  # 无值则设为 True
+                value_part = arg[2:].strip()  # 剩余部分为值
+                if value_part[0] == '=':
+                    # 如果值以等号开头，则取等号后的部分
+                    value = value_part[1:].strip()
+                else:
+                    # 如果没有等号，则取剩余部分
+                    # 例如 -d2 → 值取 "2"
+                    value = value_part
             options[key.lower()] = value
         else:
             # 如果参数没有前缀，则将其视为位置参数

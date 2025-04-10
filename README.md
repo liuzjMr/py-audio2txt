@@ -46,6 +46,7 @@ Options:
   -b, --batch     Batch size (default: 10)
   -l, --log-level Log level (default: INFO)
   -w, --hot-words Hot words file path (default: hotwords.txt)
+  --overwrite   Overwrite existing file
   --verbose   Verbose mode
 ``` 
 
@@ -63,6 +64,7 @@ Options:
   -h, --help      Show this help message
   -l, --log-level Log level (default: INFO)
   -t, --template   Summary template file (default: template.txt)
+  --overwrite   Overwrite existing file
   --verbose   Verbose mode
 ``` 
 
